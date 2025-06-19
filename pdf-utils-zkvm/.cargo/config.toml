@@ -1,0 +1,9 @@
+[build]
+target = "riscv32im-unknown-none-elf"
+
+[target.riscv32im-unknown-none-elf]
+rustflags = [
+    "-C", "link-arg=-Ttext=0x10000",
+    "-C", "relocation-model=static",
+    "-C", "target-feature=+crt-static",
+]

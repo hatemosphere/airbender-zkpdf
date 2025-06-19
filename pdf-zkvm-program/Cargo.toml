@@ -1,0 +1,25 @@
+[package]
+name = "pdf-zkvm-program"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+riscv_common = { path = "../airbender/riscv_common", features = ["custom_allocator", "custom_panic", "uart"] }
+pdf-utils-zkvm-core = { path = "../pdf-utils-zkvm/core" }
+hashbrown = { version = "0.14", default-features = false }
+hex = { version = "0.4", default-features = false }
+linked_list_allocator = { version = "0.10", default-features = false }
+
+[features]
+default = ["debug"]
+debug = ["pdf-utils-zkvm-core/debug"]
+
+[profile.release]
+lto = true
+panic = "abort"
+opt-level = "z"
+
+[patch.crates-io]
+crypto-bigint = { path = "crypto-bigint-no-atomics" }
+
+[workspace]

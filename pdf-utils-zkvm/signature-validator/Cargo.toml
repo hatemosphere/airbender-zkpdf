@@ -1,0 +1,19 @@
+[package]
+name = "signature-validator-zkvm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hex = { workspace = true }
+der = { workspace = true }
+sha2 = { workspace = true }
+sha1 = { workspace = true }
+hashbrown = { workspace = true }
+rsa = { workspace = true }
+crypto-bigint = { workspace = true }
+signature = { workspace = true }
+pdf-logger = { path = "../logger" }
+simple-asn1-nostd = { path = "../simple-asn1-nostd" }
+
+[features]
+debug = []

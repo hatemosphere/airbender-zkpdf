@@ -1,0 +1,49 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Binary artifacts
+*.bin
+*.elf
+*.o
+*.a
+*.so
+*.dylib
+
+# RISC-V specific
+app.bin
+app.elf
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+*.txt
+!prepare_input.py
+
+# Airbender artifacts
+proof.bin
+public_input.bin
+
+# Temporary files
+tmp/
+temp/
+
+# AI
+CLAUDE.md
+.claude/

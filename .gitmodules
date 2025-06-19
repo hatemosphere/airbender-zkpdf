@@ -1,0 +1,3 @@
+[submodule "airbender"]
+	path = airbender
+	url = https://github.com/matter-labs/zksync-airbender.git

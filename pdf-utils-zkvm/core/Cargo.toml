@@ -1,0 +1,13 @@
+[package]
+name = "pdf-utils-zkvm-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+signature-validator-zkvm = { path = "../signature-validator" }
+extractor-zkvm = { path = "../extractor" }
+pdf-logger = { path = "../logger" }
+
+[features]
+default = []
+debug = ["signature-validator-zkvm/debug"]
