@@ -1,7 +1,7 @@
 #![no_std]
 
 //! No-std logging trait for PDF utilities
-//! 
+//!
 //! This trait allows the library to output debug information without
 //! depending on any specific hardware or zkVM implementation.
 
@@ -14,7 +14,7 @@ use core::fmt;
 pub trait Logger {
     /// Log a debug message
     fn log_debug(&self, message: &str);
-    
+
     /// Log a formatted debug message
     fn log_debug_fmt(&self, args: fmt::Arguments<'_>) {
         let message = format!("{}", args);
@@ -35,7 +35,7 @@ impl Logger for NullLogger {
 static mut LOGGER: Option<&'static dyn Logger> = None;
 
 /// Set the global logger
-/// 
+///
 /// # Safety
 /// This function should only be called once at program startup
 pub unsafe fn set_logger(logger: &'static dyn Logger) {

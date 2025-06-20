@@ -1,33 +1,176 @@
-name: PDF Utils CI
+name: CI
 
 on:
   push:
-    paths:
-      - "pdf-utils/**"
+    branches: [ main ]
   pull_request:
-    paths:
-      - "pdf-utils/**"
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  test-zkpdf:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: pdf-utils
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        submodules: recursive
+
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
+      with:
+        toolchain: nightly
+        target: riscv32im-unknown-none-elf
+        components: rust-src
+
+    - name: Cache cargo registry
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build Airbender
+      run: |
+        cd airbender
+        cargo build --release --features include_verifiers
+        cd ..
+
+    - name: Build zkPDF program
+      run: |
+        cd pdf-zkvm-program
+        ./build.sh
+        cd ..
+
+    - name: Prepare test input
+      run: |
+        cd pdf-zkvm-program
+        python prepare_input.py digitally_signed.pdf "Sample Signed PDF Document" > input.txt
+        cd ..
+
+    - name: Run zkPDF in Airbender emulator
+      id: run_test
+      run: |
+        cd pdf-zkvm-program
+        # Run and capture output
+        OUTPUT=$(../airbender/target/release/cli run --bin app.bin --input-file input.txt --cycles 999999999 2>&1 | tail -1)
+        echo "Program output: $OUTPUT"
+        echo "output=$OUTPUT" >> $GITHUB_OUTPUT
+        cd ..
+
+    - name: Verify output
+      run: |
+        # Expected output format: Result: 1, 1, 0, 1, 272318, 10328225, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        # Where:
+        # - result[0] = 1 (signature valid)
+        # - result[1] = 1 (text found)
+        # - result[2] = 0 (found on page 0)
+        # - result[3] = 1 (1 page total)
+        # - result[4] = 272318 (PDF size)
+        # - result[5] = 10328225 (text hash)
+        # - result[6] = 26 (expected text size)
+
+        OUTPUT="${{ steps.run_test.outputs.output }}"
+        echo "Checking output: $OUTPUT"
+
+        # Extract the values
+        if [[ "$OUTPUT" =~ Result:\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+) ]]; then
+          SIG_VALID="${BASH_REMATCH[1]}"
+          TEXT_FOUND="${BASH_REMATCH[2]}"
+          PAGE_NUM="${BASH_REMATCH[3]}"
+          PAGE_COUNT="${BASH_REMATCH[4]}"
+          PDF_SIZE="${BASH_REMATCH[5]}"
+          TEXT_HASH="${BASH_REMATCH[6]}"
+          TEXT_SIZE="${BASH_REMATCH[7]}"
+
+          # Verify expected values
+          if [ "$SIG_VALID" != "1" ]; then
+            echo "ERROR: Expected signature valid (1), got $SIG_VALID"
+            exit 1
+          fi
+
+          if [ "$TEXT_FOUND" != "1" ]; then
+            echo "ERROR: Expected text found (1), got $TEXT_FOUND"
+            exit 1
+          fi
+
+          if [ "$PAGE_NUM" != "0" ]; then
+            echo "ERROR: Expected text on page 0, got page $PAGE_NUM"
+            exit 1
+          fi
+
+          if [ "$PAGE_COUNT" != "1" ]; then
+            echo "ERROR: Expected 1 page total, got $PAGE_COUNT"
+            exit 1
+          fi
+
+          # PDF size should be approximately 272318 bytes (allow some variation)
+          if [ "$PDF_SIZE" != "272318" ]; then
+            echo "ERROR: Expected PDF size 272318, got $PDF_SIZE"
+            exit 1
+          fi
+
+          if [ "$TEXT_SIZE" != "26" ]; then
+            echo "ERROR: Expected text size 26, got $TEXT_SIZE"
+            exit 1
+          fi
+
+          echo "✅ All checks passed!"
+          echo "- Signature: VALID"
+          echo "- Text 'Sample Signed PDF Document': FOUND"
+          echo "- Found on page: 0"
+          echo "- Total pages: 1"
+          echo "- PDF size: $PDF_SIZE bytes"
+          echo "- Text hash: $TEXT_HASH"
+        else
+          echo "ERROR: Output format doesn't match expected pattern"
+          exit 1
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        submodules: recursive
 
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
+      with:
+        toolchain: nightly
+        target: riscv32im-unknown-none-elf
+        components: clippy, rustfmt
 
-      - name: Build PDF Utils workspace
-        run: cargo build --workspace --verbose
+    - name: Lint utils
+      run: |
+        cd pdf-utils-zkvm
+        cargo fmt -- --check
+        # Run clippy and capture both output and exit code
+        set +e
+        OUTPUT=$(cargo clippy --target riscv32im-unknown-none-elf -- -D warnings 2>&1)
+        EXIT_CODE=$?
+        set -e
+        # Filter out expected warnings and display the rest
+        echo "$OUTPUT" | grep -v "unstable feature specified for \`-Ctarget-feature\`" | grep -v "this feature is not stably supported" || true
+        # Fail if clippy had real errors
+        exit $EXIT_CODE
 
-      - name: Test PDF Utils
-        run: cargo test --workspace --verbose
+    - name: Lint program
+      run: |
+        cd pdf-zkvm-program
+        cargo fmt -- --check
+        # Run clippy and capture both output and exit code
+        set +e
+        OUTPUT=$(cargo clippy --target riscv32im-unknown-none-elf -- -D warnings 2>&1)
+        EXIT_CODE=$?
+        set -e
+        # Filter out expected warnings and display the rest
+        echo "$OUTPUT" | grep -v "unstable feature specified for \`-Ctarget-feature\`" | grep -v "this feature is not stably supported" || true
+        # Fail if clippy had real errors
+        exit $EXIT_CODE

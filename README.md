@@ -116,7 +116,7 @@ The project includes two separate Rust programs for RISC-V zkVM:
 
 ### pdf-utils-zkvm/ (Library)
 A no_std library providing PDF utilities for RISC-V zkVM environments:
-- **signature-validator**: no_std PDF signature validation using der crate instead of simple_asn1
+- **signature-validator**: no_std PDF signature validation using a ported version of simple_asn1
 - **extractor**: no_std PDF text extraction using BTreeMap instead of HashMap
 - **core**: Combined validation and extraction API
 

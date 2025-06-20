@@ -287,7 +287,6 @@ fn parse_hex_string(hex: &str) -> Option<String> {
     Some(out)
 }
 
-
 fn glyph_to_unicode(glyph_name: &str) -> String {
     // Common glyph name mappings
     match glyph_name {

@@ -3,10 +3,10 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
 use alloc::string::String;
 use alloc::vec;
-use crypto_bigint::{U256, Zero};
+use alloc::vec::Vec;
+use crypto_bigint::{Zero, U256};
 
 /// An ASN.1 OID component (we'll use U256 for each component)
 pub type OidComponent = U256;
@@ -37,8 +37,7 @@ impl OID {
             // Convert to u64, assuming values fit
             let bytes = val.to_le_bytes();
             let u64_val = u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3],
-                bytes[4], bytes[5], bytes[6], bytes[7]
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
             ]);
             vec.push(u64_val);
         }
@@ -73,28 +72,37 @@ pub struct SignedBigInt {
 impl SignedBigInt {
     pub fn from_signed_bytes_be(bytes: &[u8]) -> Self {
         if bytes.is_empty() {
-            return SignedBigInt { bytes: vec![0], negative: false };
+            return SignedBigInt {
+                bytes: vec![0],
+                negative: false,
+            };
         }
-        
+
         // Check if negative (high bit set)
         let negative = bytes[0] & 0x80 != 0;
-        
+
         if negative {
             // Two's complement - invert and add 1
             let mut inverted = Vec::with_capacity(bytes.len());
             let mut carry = 1u8;
-            
+
             for &byte in bytes.iter().rev() {
                 let inverted_byte = !byte;
                 let (sum, new_carry) = inverted_byte.overflowing_add(carry);
                 inverted.push(sum);
                 carry = if new_carry { 1 } else { 0 };
             }
-            
+
             inverted.reverse();
-            SignedBigInt { bytes: inverted, negative: true }
+            SignedBigInt {
+                bytes: inverted,
+                negative: true,
+            }
         } else {
-            SignedBigInt { bytes: bytes.to_vec(), negative: false }
+            SignedBigInt {
+                bytes: bytes.to_vec(),
+                negative: false,
+            }
         }
     }
 }
@@ -112,7 +120,7 @@ pub enum ASN1Block {
     PrintableString(usize, String),
     TeletexString(usize, String),
     IA5String(usize, String),
-    UTCTime(usize, Vec<u8>), // Store as raw bytes for now
+    UTCTime(usize, Vec<u8>),         // Store as raw bytes for now
     GeneralizedTime(usize, Vec<u8>), // Store as raw bytes for now
     UniversalString(usize, String),
     BMPString(usize, String),
@@ -133,7 +141,7 @@ impl ASN1Block {
             _ => ASN1Class::Universal,
         }
     }
-    
+
     /// Get the starting offset associated with the given ASN1Block
     pub fn offset(&self) -> usize {
         match *self {
@@ -162,18 +170,16 @@ impl ASN1Block {
 impl PartialEq for ASN1Block {
     fn eq(&self, other: &ASN1Block) -> bool {
         match (self, other) {
-            (&ASN1Block::Boolean(_, a1), &ASN1Block::Boolean(_, a2)) => a1 == a2,
-            (&ASN1Block::Integer(_, ref a1), &ASN1Block::Integer(_, ref a2)) => a1 == a2,
-            (&ASN1Block::BitString(_, a1, ref b1), &ASN1Block::BitString(_, a2, ref b2)) => {
+            (ASN1Block::Boolean(_, a1), ASN1Block::Boolean(_, a2)) => a1 == a2,
+            (ASN1Block::Integer(_, a1), ASN1Block::Integer(_, a2)) => a1 == a2,
+            (ASN1Block::BitString(_, a1, b1), ASN1Block::BitString(_, a2, b2)) => {
                 (a1 == a2) && (b1 == b2)
             }
-            (&ASN1Block::OctetString(_, ref a1), &ASN1Block::OctetString(_, ref a2)) => a1 == a2,
-            (&ASN1Block::Null(_), &ASN1Block::Null(_)) => true,
-            (&ASN1Block::ObjectIdentifier(_, ref a1), &ASN1Block::ObjectIdentifier(_, ref a2)) => {
-                a1 == a2
-            }
-            (&ASN1Block::Sequence(_, ref a1), &ASN1Block::Sequence(_, ref a2)) => a1 == a2,
-            (&ASN1Block::Set(_, ref a1), &ASN1Block::Set(_, ref a2)) => a1 == a2,
+            (ASN1Block::OctetString(_, a1), ASN1Block::OctetString(_, a2)) => a1 == a2,
+            (ASN1Block::Null(_), ASN1Block::Null(_)) => true,
+            (ASN1Block::ObjectIdentifier(_, a1), ASN1Block::ObjectIdentifier(_, a2)) => a1 == a2,
+            (ASN1Block::Sequence(_, a1), ASN1Block::Sequence(_, a2)) => a1 == a2,
+            (ASN1Block::Set(_, a1), ASN1Block::Set(_, a2)) => a1 == a2,
             _ => false,
         }
     }
@@ -272,7 +278,7 @@ fn from_der_(i: &[u8], start_offset: usize) -> Result<Vec<ASN1Block>, ASN1Decode
             // BIT STRING
             Some(0x03) if body.is_empty() => result.push(ASN1Block::BitString(soff, 0, Vec::new())),
             Some(0x03) => {
-                let bits = (&body[1..]).to_vec();
+                let bits = body[1..].to_vec();
                 let bitcount = bits.len() * 8;
                 let rest = body[0] as usize;
                 if bitcount < rest {
@@ -429,11 +435,11 @@ fn decode_base127(i: &[u8], index: &mut usize) -> Result<U256, ASN1DecodeErr> {
 
         let nextbyte = i[*index];
         *index += 1;
-        
+
         // Shift left by 7 bits and add the lower 7 bits of nextbyte
         res = res.shl_vartime(7);
         res = res.wrapping_add(&U256::from_u8(nextbyte & 0x7f));
-        
+
         if (nextbyte & 0x80) == 0 {
             return Ok(res);
         }

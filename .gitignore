@@ -35,6 +35,7 @@ Thumbs.db
 # Test artifacts
 *.txt
 !prepare_input.py
+!pdf-zkvm-program/digitally_signed.pdf
 
 # Airbender artifacts
 proof.bin

@@ -13,7 +13,7 @@ pub fn extract_text_from_page_content(
 ) -> String {
     // Concatenate all content streams first, like the reference implementation
     let mut all_content = Vec::new();
-    for (_i, stream_data) in page.content_streams.iter().enumerate() {
+    for stream_data in page.content_streams.iter() {
         if !all_content.is_empty() {
             all_content.push(b' '); // Add space between streams
         }
@@ -59,14 +59,78 @@ fn extract_text_from_stream(
     let mut text_line = String::new();
 
     while i < tokens.len() {
-        match &tokens[i] {
-            Token::Operator(op) => {
-                match op.as_str() {
-                    "BT" => {
-                        in_text = true;
+        if let Token::Operator(op) = &tokens[i] {
+            match op.as_str() {
+                "BT" => {
+                    in_text = true;
+                    text_line.clear();
+                }
+                "ET" => {
+                    if !text_line.is_empty() {
+                        if !text.is_empty() {
+                            text.push(' ');
+                        }
+                        text.push_str(&text_line);
                         text_line.clear();
                     }
-                    "ET" => {
+                    in_text = false;
+                }
+                "Tf" => {
+                    // Set font
+                    if i >= 2 {
+                        if let Token::Name(font_name) = &tokens[i - 2] {
+                            current_font = fonts.get(font_name);
+                        }
+                    }
+                }
+                "Tj" => {
+                    // Show text
+                    if i >= 1 && in_text {
+                        if let Token::String(bytes) = &tokens[i - 1] {
+                            let decoded = decode_text(bytes, current_font);
+                            text_line.push_str(&decoded);
+                        }
+                    }
+                }
+                "TJ" => {
+                    // Show text with individual glyph positioning
+                    if i >= 1 && in_text {
+                        if let Token::ArrayEnd = &tokens[i - 1] {
+                            // Find array end
+                            let mut j = i - 2;
+                            let mut array_items = Vec::new();
+                            let mut depth = 1;
+
+                            while j > 0 && depth > 0 {
+                                match &tokens[j] {
+                                    Token::ArrayEnd => depth += 1,
+                                    Token::ArrayStart => depth -= 1,
+                                    _ if depth == 1 => array_items.push(&tokens[j]),
+                                    _ => {}
+                                }
+                                j -= 1;
+                            }
+
+                            array_items.reverse();
+                            for item in array_items {
+                                match item {
+                                    Token::String(bytes) => {
+                                        let decoded = decode_text(bytes, current_font);
+                                        text_line.push_str(&decoded);
+                                    }
+                                    Token::Number(n) if *n < -200.0 => {
+                                        // Large negative numbers indicate word spacing
+                                        text_line.push(' ');
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                }
+                "'" => {
+                    // Move to next line and show text
+                    if i >= 1 && in_text {
                         if !text_line.is_empty() {
                             if !text.is_empty() {
                                 text.push(' ');
@@ -74,112 +138,45 @@ fn extract_text_from_stream(
                             text.push_str(&text_line);
                             text_line.clear();
                         }
-                        in_text = false;
-                    }
-                    "Tf" => {
-                        // Set font
-                        if i >= 2 {
-                            if let Token::Name(font_name) = &tokens[i - 2] {
-                                current_font = fonts.get(font_name);
-                            }
+                        if let Token::String(bytes) = &tokens[i - 1] {
+                            let decoded = decode_text(bytes, current_font);
+                            text_line.push_str(&decoded);
                         }
                     }
-                    "Tj" => {
-                        // Show text
-                        if i >= 1 && in_text {
-                            if let Token::String(bytes) = &tokens[i - 1] {
-                                let decoded = decode_text(bytes, current_font);
-                                text_line.push_str(&decoded);
-                            }
-                        }
-                    }
-                    "TJ" => {
-                        // Show text with individual glyph positioning
-                        if i >= 1 && in_text {
-                            if let Token::ArrayEnd = &tokens[i - 1] {
-                                // Find array end
-                                let mut j = i - 2;
-                                let mut array_items = Vec::new();
-                                let mut depth = 1;
-
-                                while j > 0 && depth > 0 {
-                                    match &tokens[j] {
-                                        Token::ArrayEnd => depth += 1,
-                                        Token::ArrayStart => depth -= 1,
-                                        _ if depth == 1 => array_items.push(&tokens[j]),
-                                        _ => {}
-                                    }
-                                    j -= 1;
-                                }
-
-                                array_items.reverse();
-                                for item in array_items {
-                                    match item {
-                                        Token::String(bytes) => {
-                                            let decoded = decode_text(bytes, current_font);
-                                            text_line.push_str(&decoded);
-                                        }
-                                        Token::Number(n) if *n < -200.0 => {
-                                            // Large negative numbers indicate word spacing
-                                            text_line.push(' ');
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "'" => {
-                        // Move to next line and show text
-                        if i >= 1 && in_text {
-                            if !text_line.is_empty() {
-                                if !text.is_empty() {
-                                    text.push(' ');
-                                }
-                                text.push_str(&text_line);
-                                text_line.clear();
-                            }
-                            if let Token::String(bytes) = &tokens[i - 1] {
-                                let decoded = decode_text(bytes, current_font);
-                                text_line.push_str(&decoded);
-                            }
-                        }
-                    }
-                    "\"" => {
-                        // Set word and char spacing, move to next line, show text
-                        if i >= 3 && in_text {
-                            if !text_line.is_empty() {
-                                if !text.is_empty() {
-                                    text.push(' ');
-                                }
-                                text.push_str(&text_line);
-                                text_line.clear();
-                            }
-                            if let Token::String(bytes) = &tokens[i - 1] {
-                                let decoded = decode_text(bytes, current_font);
-                                text_line.push_str(&decoded);
-                            }
-                        }
-                    }
-                    "Do" => {
-                        // Draw XObject
-                        if i >= 1 {
-                            if let Token::Name(xobj_name) = &tokens[i - 1] {
-                                if let Some(xobj_text) =
-                                    process_xobject(xobj_name, resources, objects, fonts)
-                                {
-                                    if !text.is_empty() {
-                                        text.push(' ');
-                                    }
-                                    text.push_str(&xobj_text);
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
                 }
+                "\"" => {
+                    // Set word and char spacing, move to next line, show text
+                    if i >= 3 && in_text {
+                        if !text_line.is_empty() {
+                            if !text.is_empty() {
+                                text.push(' ');
+                            }
+                            text.push_str(&text_line);
+                            text_line.clear();
+                        }
+                        if let Token::String(bytes) = &tokens[i - 1] {
+                            let decoded = decode_text(bytes, current_font);
+                            text_line.push_str(&decoded);
+                        }
+                    }
+                }
+                "Do" => {
+                    // Draw XObject
+                    if i >= 1 {
+                        if let Token::Name(xobj_name) = &tokens[i - 1] {
+                            if let Some(xobj_text) =
+                                process_xobject(xobj_name, resources, objects, fonts)
+                            {
+                                if !text.is_empty() {
+                                    text.push(' ');
+                                }
+                                text.push_str(&xobj_text);
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
-            _ => {}
         }
         i += 1;
     }
@@ -203,7 +200,7 @@ fn decode_text(bytes: &[u8], font: Option<&PdfFont>) -> String {
         bytes
             .iter()
             .filter_map(|&b| {
-                if b >= 32 && b < 127 {
+                if (32..127).contains(&b) {
                     Some(b as char)
                 } else {
                     None
@@ -269,7 +266,7 @@ fn decode_with_font(bytes: &[u8], font: &PdfFont) -> String {
                 "WinAnsiEncoding" => decode_winansi(byte),
                 "MacRomanEncoding" => decode_macroman(byte),
                 _ => {
-                    if byte >= 32 && byte < 127 {
+                    if (32..127).contains(&byte) {
                         byte as char
                     } else {
                         '?'

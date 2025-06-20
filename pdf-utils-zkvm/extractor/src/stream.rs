@@ -117,7 +117,7 @@ fn decode_ascii85(data: &[u8]) -> Result<Vec<u8>, String> {
             continue;
         }
 
-        if byte < b'!' || byte > b'u' {
+        if !(b'!'..=b'u').contains(&byte) {
             return Err("Invalid ASCII85 character".into());
         }
 
@@ -143,8 +143,8 @@ fn decode_ascii85(data: &[u8]) -> Result<Vec<u8>, String> {
 
     // Handle remaining bytes
     if count > 0 {
-        for i in count..5 {
-            tuple[i] = 84; // 'u' - '!'
+        for slot in tuple.iter_mut().skip(count) {
+            *slot = 84; // 'u' - '!'
         }
 
         let value = (tuple[0] as u32) * 85u32.pow(4)
@@ -178,7 +178,7 @@ fn apply_decode_parms(data: &[u8], decode_parms: &PdfObj) -> Result<Vec<u8>, Str
                 let predictor = *predictor as i32;
                 if predictor > 1 {
                     // PNG predictors
-                    if predictor >= 10 && predictor <= 15 {
+                    if (10..=15).contains(&predictor) {
                         let columns = match dict.get("Columns") {
                             Some(PdfObj::Number(n)) => *n as usize,
                             _ => return Err("Missing Columns for predictor".to_string()),

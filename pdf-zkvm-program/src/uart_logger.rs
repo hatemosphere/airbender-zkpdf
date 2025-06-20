@@ -10,12 +10,12 @@ pub struct UartLogger;
 impl Logger for UartLogger {
     fn log_debug(&self, message: &str) {
         let mut uart = QuasiUART::new();
-        let _ = write!(uart, "{}", message);
+        let _ = write!(uart, "{message}");
     }
 
     fn log_debug_fmt(&self, args: core::fmt::Arguments<'_>) {
         let mut uart = QuasiUART::new();
-        let _ = write!(uart, "{}", args);
+        let _ = write!(uart, "{args}");
     }
 }
 

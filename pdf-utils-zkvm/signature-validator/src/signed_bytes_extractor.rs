@@ -6,20 +6,24 @@ use alloc::vec::Vec;
 pub(crate) fn get_signature_der(pdf_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>), String> {
     #[cfg(feature = "debug")]
     pdf_logger::debug_log!("Looking for signature in PDF of {} bytes", pdf_bytes.len());
-    
+
     let byte_range = extract_byte_range(pdf_bytes)?;
-    
+
     #[cfg(feature = "debug")]
-    pdf_logger::debug_log!("Found ByteRange: [{} {} {} {}]", 
-        byte_range.offset1, byte_range.length1, 
-        byte_range.offset2, byte_range.length2);
-    
+    pdf_logger::debug_log!(
+        "Found ByteRange: [{} {} {} {}]",
+        byte_range.offset1,
+        byte_range.length1,
+        byte_range.offset2,
+        byte_range.length2
+    );
+
     let signed_data = extract_signed_data(pdf_bytes, &byte_range)?;
     let signature_hex = extract_signature_hex(pdf_bytes, &byte_range)?;
-    
+
     #[cfg(feature = "debug")]
     pdf_logger::debug_log!("Signature hex length: {}", signature_hex.len());
-    
+
     let signature_der = hex_to_bytes_internal(&signature_hex)?;
 
     Ok((signature_der, signed_data))
@@ -33,10 +37,9 @@ struct ByteRange {
     length2: usize,
 }
 
-
 fn extract_byte_range(pdf_bytes: &[u8]) -> Result<ByteRange, String> {
     let byte_range_pattern = b"/ByteRange";
-    
+
     #[cfg(feature = "debug")]
     {
         pdf_logger::debug_log!("Searching for /ByteRange in PDF...");
@@ -47,7 +50,7 @@ fn extract_byte_range(pdf_bytes: &[u8]) -> Result<ByteRange, String> {
             }
         }
     }
-    
+
     let byte_range_pos = find_pattern_internal(pdf_bytes, byte_range_pattern)
         .ok_or_else(|| String::from("ByteRange not found"))?;
 
@@ -102,14 +105,18 @@ fn extract_signature_hex(pdf_bytes: &[u8], byte_range: &ByteRange) -> Result<Str
     // Instead of searching in the signature range, search after the ByteRange
     // In many PDFs, /Contents appears before /ByteRange
     let contents_pattern = b"/Contents";
-    
+
     // First try to find /Contents after the ByteRange
     let byte_range_pattern = b"/ByteRange";
     let byte_range_pos = find_pattern_internal(pdf_bytes, byte_range_pattern)
         .ok_or_else(|| String::from("ByteRange not found"))?;
-    
+
     // Search for /Contents starting from before the ByteRange position
-    let search_start = if byte_range_pos > 500 { byte_range_pos - 500 } else { 0 };
+    let search_start = if byte_range_pos > 500 {
+        byte_range_pos - 500
+    } else {
+        0
+    };
     let contents_pos = find_pattern_internal(&pdf_bytes[search_start..], contents_pattern)
         .map(|pos| search_start + pos)
         .ok_or_else(|| String::from("/Contents not found near ByteRange"))?;
@@ -162,7 +169,10 @@ pub fn find_byte(haystack: &[u8], needle: u8, start: usize) -> Option<usize> {
 }
 
 fn find_byte_internal(haystack: &[u8], needle: u8, start: usize) -> Option<usize> {
-    haystack[start..].iter().position(|&b| b == needle).map(|pos| start + pos)
+    haystack[start..]
+        .iter()
+        .position(|&b| b == needle)
+        .map(|pos| start + pos)
 }
 
 fn parse_usize(s: &str) -> Result<usize, String> {

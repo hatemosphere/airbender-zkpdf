@@ -35,7 +35,7 @@ impl fmt::Display for PdfError {
 
 pub fn extract_text(pdf_bytes: Vec<u8>) -> Result<Vec<String>, PdfError> {
     let (pages, objects) = parse_pdf(&pdf_bytes)?;
-    extract_text_from_document(&pages, &objects).map_err(|e| PdfError::ParseError(e))
+    extract_text_from_document(&pages, &objects).map_err(PdfError::ParseError)
 }
 
 pub fn extract_text_from_document(

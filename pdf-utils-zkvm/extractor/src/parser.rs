@@ -304,7 +304,6 @@ impl<'a> Parser<'a> {
         &self.data[self.pos..end] == keyword.as_bytes()
     }
 
-
     pub fn skip_whitespace_and_comments(&mut self) {
         loop {
             self.skip_whitespace();
@@ -390,9 +389,9 @@ fn hex_digit_value(ch: u8) -> Result<u8, String> {
     }
 }
 
-pub fn parse_pdf(
-    data: &[u8],
-) -> Result<(Vec<PageContent>, BTreeMap<(u32, u16), PdfObj>), PdfError> {
+type PdfParseResult = (Vec<PageContent>, BTreeMap<(u32, u16), PdfObj>);
+
+pub fn parse_pdf(data: &[u8]) -> Result<PdfParseResult, PdfError> {
     let mut parser = Parser::new(data);
     let mut objects: BTreeMap<(u32, u16), PdfObj> = BTreeMap::new();
 
@@ -441,13 +440,13 @@ pub fn parse_pdf(
         }
 
         // Parse object: "<obj_id> <gen_id> obj"
-        let obj_id = match parser.parse_number().map_err(|e| PdfError::ParseError(e))? {
+        let obj_id = match parser.parse_number().map_err(PdfError::ParseError)? {
             PdfObj::Number(num) => num as u32,
             _ => return Err(PdfError::ParseError("Invalid object id".to_string())),
         };
         parser.skip_whitespace_and_comments();
 
-        let gen_id = match parser.parse_number().map_err(|e| PdfError::ParseError(e))? {
+        let gen_id = match parser.parse_number().map_err(PdfError::ParseError)? {
             PdfObj::Number(num) => num as u16,
             _ => {
                 return Err(PdfError::ParseError(
@@ -470,9 +469,7 @@ pub fn parse_pdf(
             && parser.data[parser.pos + 1] == b'<'
         {
             // Dictionary object - don't advance, let parse_dictionary handle it
-            let dict_obj = parser
-                .parse_dictionary()
-                .map_err(|e| PdfError::ParseError(e))?;
+            let dict_obj = parser.parse_dictionary().map_err(PdfError::ParseError)?;
 
             parser.skip_whitespace_and_comments();
             if parser.remaining_starts_with(b"stream") {
@@ -571,7 +568,7 @@ pub fn parse_pdf(
             }
         } else {
             // Other value type
-            let value_obj = parser.parse_value().map_err(|e| PdfError::ParseError(e))?;
+            let value_obj = parser.parse_value().map_err(PdfError::ParseError)?;
             parser.skip_whitespace_and_comments();
             if !parser.remaining_starts_with(b"endobj") {
                 return Err(PdfError::ParseError(
@@ -592,11 +589,7 @@ pub fn parse_pdf(
     if parser.remaining_starts_with(b"trailer") {
         parser.pos += 7; // Skip "trailer"
         parser.skip_whitespace_and_comments();
-        trailer_dict = Some(
-            parser
-                .parse_dictionary()
-                .map_err(|e| PdfError::ParseError(e))?,
-        );
+        trailer_dict = Some(parser.parse_dictionary().map_err(PdfError::ParseError)?);
     } else {
         // Search for trailer backwards
         let data_bytes = parser.data;
@@ -604,11 +597,7 @@ pub fn parse_pdf(
             if data_bytes[i..].starts_with(b"trailer") {
                 parser.pos = i + 7; // Skip "trailer"
                 parser.skip_whitespace_and_comments();
-                trailer_dict = Some(
-                    parser
-                        .parse_dictionary()
-                        .map_err(|e| PdfError::ParseError(e))?,
-                );
+                trailer_dict = Some(parser.parse_dictionary().map_err(PdfError::ParseError)?);
                 break;
             }
         }
@@ -624,17 +613,14 @@ pub fn parse_pdf(
         let mut xref_stream_data = None;
 
         for ((_id, _gen), obj) in objects.iter() {
-            match obj {
-                PdfObj::Stream(stream) => {
-                    if let Some(PdfObj::Name(type_name)) = stream.dict.get("Type") {
-                        if type_name == "XRef" {
-                            xref_stream_dict = Some(stream.dict.clone());
-                            xref_stream_data = Some((stream.dict.clone(), stream.data.clone()));
-                            break;
-                        }
+            if let PdfObj::Stream(stream) = obj {
+                if let Some(PdfObj::Name(type_name)) = stream.dict.get("Type") {
+                    if type_name == "XRef" {
+                        xref_stream_dict = Some(stream.dict.clone());
+                        xref_stream_data = Some((stream.dict.clone(), stream.data.clone()));
+                        break;
                     }
                 }
-                _ => {}
             }
         }
 
@@ -698,9 +684,9 @@ fn search_for_endstream(
                 let prev = parser.data[i - 1];
                 prev == b'\n' || prev == b'\r' || prev.is_ascii_whitespace()
             };
-            let next_ok = if i + search_len >= parser.len {
-                true
-            } else if parser.data[i + search_len..].starts_with(b"endobj") {
+            let next_ok = if i + search_len >= parser.len
+                || parser.data[i + search_len..].starts_with(b"endobj")
+            {
                 true
             } else {
                 let next = parser.data[i + search_len];
@@ -724,8 +710,6 @@ fn search_for_endstream(
 
     Ok(parser.data[stream_start..data_end].to_vec())
 }
-
-
 
 fn parse_page_tree(
     objects: &BTreeMap<(u32, u16), PdfObj>,
@@ -835,7 +819,7 @@ fn collect_pages(
                             PdfObj::Stream(stream) => {
                                 let decompressed =
                                     handle_stream_filters(&stream.dict, &stream.data)
-                                        .map_err(|e| PdfError::ParseError(e))?;
+                                        .map_err(PdfError::ParseError)?;
                                 page_content.content_streams.push(decompressed);
                             }
                             PdfObj::Array(arr) => {
@@ -846,7 +830,7 @@ fn collect_pages(
                                         {
                                             let decompressed =
                                                 handle_stream_filters(&stream.dict, &stream.data)
-                                                    .map_err(|e| PdfError::ParseError(e))?;
+                                                    .map_err(PdfError::ParseError)?;
                                             page_content.content_streams.push(decompressed);
                                         }
                                     }
@@ -864,7 +848,7 @@ fn collect_pages(
                             {
                                 let decompressed =
                                     handle_stream_filters(&stream.dict, &stream.data)
-                                        .map_err(|e| PdfError::ParseError(e))?;
+                                        .map_err(PdfError::ParseError)?;
                                 page_content.content_streams.push(decompressed);
                             }
                         }
@@ -965,7 +949,7 @@ fn parse_xref_stream(
 
     // Decompress the stream data
     let decompressed_data = handle_stream_filters(&xref_stream.dict, &xref_stream.data)
-        .map_err(|e| PdfError::ParseError(e))?;
+        .map_err(PdfError::ParseError)?;
 
     // Parse entries
     let entry_size = w[0] + w[1] + w[2];

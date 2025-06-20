@@ -11,12 +11,11 @@ use sha2::{Sha256, Sha384, Sha512};
 
 pub mod logger;
 pub mod pkcs7_reference;
-pub mod signed_bytes_extractor;
 pub mod rsa_rustcrypto;
+pub mod signed_bytes_extractor;
 
 // Use logging macro
 use pdf_logger::debug_log;
-
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SignatureAlgorithm {
@@ -40,17 +39,18 @@ impl fmt::Display for SignatureAlgorithm {
 pub fn verify_pdf_signature(pdf_bytes: &[u8]) -> Result<bool, String> {
     // First extract the signature DER and signed data from the PDF
     let (signature_der, signed_data) = signed_bytes_extractor::get_signature_der(pdf_bytes)?;
-    
+
     // Parse the PKCS#7 signed data first to get the digest algorithm
     // Parse the PKCS#7 structure using reference implementation
     let mut verifier_params = pkcs7_reference::parse_signed_data(&signature_der)?;
-    
+
     // Calculate hash of the actual signed PDF data using the algorithm from PKCS#7
-    let calculated_signed_data_hash = calculate_pdf_data_hash(&signed_data, &verifier_params.sig_algorithm)?;
-    
+    let calculated_signed_data_hash =
+        calculate_pdf_data_hash(&signed_data, &verifier_params.sig_algorithm)?;
+
     // Store the calculated hash as the actual message digest
     verifier_params.actual_message_digest = Some(calculated_signed_data_hash.clone());
-    
+
     // Check if the calculated hash matches the one stored in signedAttrs
     if let Some(stored_digest) = &verifier_params.signed_attrs_message_digest {
         debug_log!("Stored digest: {:02x?}", stored_digest);
@@ -64,7 +64,8 @@ pub fn verify_pdf_signature(pdf_bytes: &[u8]) -> Result<bool, String> {
         return Err(String::from("No message digest found in signedAttrs"));
     }
 
-    let sig_algorithm_and_digest_algorithm_match = check_alg_consistency_internal(&verifier_params)?;
+    let sig_algorithm_and_digest_algorithm_match =
+        check_alg_consistency_internal(&verifier_params)?;
     if !sig_algorithm_and_digest_algorithm_match {
         return Ok(false);
     }
@@ -72,7 +73,7 @@ pub fn verify_pdf_signature(pdf_bytes: &[u8]) -> Result<bool, String> {
     let calculated_digest = calculate_signed_attrs_hash(&verifier_params)?;
     debug_log!("Calculated signed attrs hash: {:02x?}", &calculated_digest);
     debug_log!("Signature bytes: {:02x?}", &verifier_params.signature[..16]); // First 16 bytes
-    
+
     let rsa_public_key = create_rsa_public_key(&verifier_params)?;
     let hash_alg = get_hash_algorithm(&verifier_params.sig_algorithm);
     let signature_valid = verify_rsa_signature(
@@ -85,13 +86,14 @@ pub fn verify_pdf_signature(pdf_bytes: &[u8]) -> Result<bool, String> {
     Ok(signature_valid)
 }
 
-
 #[cfg(test)]
 pub fn check_alg_consistency(params: &pkcs7_reference::VerifierParams) -> Result<bool, String> {
     check_alg_consistency_internal(params)
 }
 
-fn check_alg_consistency_internal(params: &pkcs7_reference::VerifierParams) -> Result<bool, String> {
+fn check_alg_consistency_internal(
+    params: &pkcs7_reference::VerifierParams,
+) -> Result<bool, String> {
     let digest_alg = params
         .digest_algorithm
         .as_ref()
@@ -176,7 +178,6 @@ fn calculate_pdf_data_hash(
     Ok(hash)
 }
 
-
 fn create_rsa_public_key(
     params: &pkcs7_reference::VerifierParams,
 ) -> Result<rsa_rustcrypto::PublicKey, String> {
@@ -190,7 +191,6 @@ fn create_rsa_public_key(
         .ok_or_else(|| String::from("Exponent not found"))?;
 
     rsa_rustcrypto::PublicKey::from_components(modulus, exponent)
-        .map_err(|e| String::from(e))
 }
 
 fn get_hash_algorithm(algorithm: &SignatureAlgorithm) -> rsa_rustcrypto::HashAlgorithm {
@@ -212,11 +212,9 @@ fn verify_rsa_signature(
     debug_log!("  Message length: {}", message.len());
     debug_log!("  Signature length: {}", signature.len());
     debug_log!("  Hash algorithm: {:?}", hash_alg);
-    
-    let result = public_key.verify_pkcs1v15(message, signature, hash_alg)
-        .map_err(|e| String::from(e))?;
-    
+
+    let result = public_key.verify_pkcs1v15(message, signature, hash_alg)?;
+
     debug_log!("  Verification result: {}", result);
     Ok(result)
 }
-
