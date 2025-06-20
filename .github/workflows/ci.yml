@@ -161,26 +161,10 @@ jobs:
       run: |
         cd pdf-utils-zkvm
         cargo fmt -- --check
-        # Run clippy and capture both output and exit code
-        set +e
-        OUTPUT=$(cargo clippy --target riscv32im-unknown-none-elf -- -D warnings 2>&1)
-        EXIT_CODE=$?
-        set -e
-        # Filter out expected warnings and display the rest
-        echo "$OUTPUT" | grep -v "unstable feature specified for \`-Ctarget-feature\`" | grep -v "this feature is not stably supported" || true
-        # Fail if clippy had real errors
-        exit $EXIT_CODE
+        cargo clippy --target riscv32im-unknown-none-elf -- -D warnings
 
     - name: Lint program
       run: |
         cd pdf-zkvm-program
         cargo fmt -- --check
-        # Run clippy and capture both output and exit code
-        set +e
-        OUTPUT=$(cargo clippy --target riscv32im-unknown-none-elf -- -D warnings 2>&1)
-        EXIT_CODE=$?
-        set -e
-        # Filter out expected warnings and display the rest
-        echo "$OUTPUT" | grep -v "unstable feature specified for \`-Ctarget-feature\`" | grep -v "this feature is not stably supported" || true
-        # Fail if clippy had real errors
-        exit $EXIT_CODE
+        cargo clippy --target riscv32im-unknown-none-elf -- -D warnings
