@@ -19,13 +19,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install Rust
-      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
-      with:
-        toolchain: nightly
-        target: riscv32im-unknown-none-elf
-        components: rust-src
-
     - name: Cache cargo registry
       uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
       with:
@@ -34,11 +27,23 @@ jobs:
           ~/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+    - name: Install Rust for Airbender
+      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
+      with:
+        toolchain: nightly
+
     - name: Build Airbender
       run: |
         cd airbender
-        cargo build --release --features include_verifiers
+        RUSTFLAGS="-A warnings" cargo build --release --features include_verifiers
         cd ..
+
+    - name: Install Rust for zkPDF
+      uses: actions-rust-lang/setup-rust-toolchain@fb51252c7ba57d633bc668f941da052e410add48 # v1.13.0
+      with:
+        toolchain: nightly
+        target: riscv32im-unknown-none-elf
+        components: rust-src
 
     - name: Build zkPDF program
       run: |
