@@ -81,7 +81,7 @@ impl PublicKey {
 
         // Determine the bit size we need
         let n_bits = n.len() * 8;
-        let _max_size = (n_bits + 7) / 8; // Round up to nearest byte
+        let _max_size = n_bits.div_ceil(8); // Round up to nearest byte
 
         debug_log!("Calculated n_bits={}, max_size={}", n_bits, _max_size);
 

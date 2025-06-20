@@ -112,11 +112,7 @@ fn extract_signature_hex(pdf_bytes: &[u8], byte_range: &ByteRange) -> Result<Str
         .ok_or_else(|| String::from("ByteRange not found"))?;
 
     // Search for /Contents starting from before the ByteRange position
-    let search_start = if byte_range_pos > 500 {
-        byte_range_pos - 500
-    } else {
-        0
-    };
+    let search_start = byte_range_pos.saturating_sub(500);
     let contents_pos = find_pattern_internal(&pdf_bytes[search_start..], contents_pattern)
         .map(|pos| search_start + pos)
         .ok_or_else(|| String::from("/Contents not found near ByteRange"))?;
@@ -149,7 +145,7 @@ fn hex_to_bytes_internal(hex_str: &str) -> Result<Vec<u8>, String> {
         String::from(hex_str)
     };
 
-    hex::decode(&hex_str).map_err(|e| alloc::format!("Failed to decode hex: {:?}", e))
+    hex::decode(&hex_str).map_err(|e| alloc::format!("Failed to decode hex: {e:?}"))
 }
 
 #[cfg(test)]
@@ -177,5 +173,5 @@ fn find_byte_internal(haystack: &[u8], needle: u8, start: usize) -> Option<usize
 
 fn parse_usize(s: &str) -> Result<usize, String> {
     s.parse::<usize>()
-        .map_err(|_| alloc::format!("Failed to parse '{}' as usize", s))
+        .map_err(|_| alloc::format!("Failed to parse '{s}' as usize"))
 }

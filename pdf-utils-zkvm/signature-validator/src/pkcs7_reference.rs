@@ -23,7 +23,7 @@ pub struct VerifierParams {
 pub fn parse_signed_data(der_bytes: &[u8]) -> Result<VerifierParams, String> {
     debug_log!("parse_signed_data: DER length={}", der_bytes.len());
 
-    let blocks = from_der(der_bytes).map_err(|e| format!("DER parse error: {:?}", e))?;
+    let blocks = from_der(der_bytes).map_err(|e| format!("DER parse error: {e:?}"))?;
 
     let content_info = extract_content_info(&blocks)?;
     let signed_children = extract_signed_children(content_info)?;
@@ -59,9 +59,9 @@ fn get_signature_data(signed_data_seq: Vec<ASN1Block>) -> Result<SignatureData, 
     let signed_attrs_der = extract_signed_attributes_der(signer_info_items)?;
     let signed_algo = compute_signed_algorithm(&digest_oid)?;
     let signed_attrs =
-        from_der(&signed_attrs_der).map_err(|e| format!("signedAttrs parse error: {:?}", e))?;
+        from_der(&signed_attrs_der).map_err(|e| format!("signedAttrs parse error: {e:?}"))?;
     let expected_message_digest = extract_message_digest(&signed_attrs)
-        .map_err(|e| format!("Failed to get messageDigest: {}", e))?;
+        .map_err(|e| format!("Failed to get messageDigest: {e}"))?;
     let signature = extract_signature(signer_info_items)?;
 
     Ok(SignatureData {
@@ -215,7 +215,7 @@ pub fn extract_signed_children(children: &[ASN1Block]) -> Result<Vec<ASN1Block>,
         }
         ASN1Block::Unknown(ASN1Class::ContextSpecific, _, _, _, data) => {
             let parsed =
-                from_der(data).map_err(|e| format!("Inner SignedData parse error: {:?}", e))?;
+                from_der(data).map_err(|e| format!("Inner SignedData parse error: {e:?}"))?;
             if let ASN1Block::Sequence(_, seq_children) = &parsed[0] {
                 Ok(seq_children.clone())
             } else {
@@ -240,7 +240,7 @@ pub fn extract_pubkey_components(
 ) -> Result<(Vec<u8>, Vec<u8>), String> {
     let certificates = find_certificates(signed_data_seq)?;
     let tbs_fields = get_correct_tbs(&certificates, signed_serial_number)
-        .map_err(|e| format!("Failed to get correct tbsCertificate: {}", e))?;
+        .map_err(|e| format!("Failed to get correct tbsCertificate: {e}"))?;
     let spki_fields = find_subject_public_key_info(&tbs_fields)?;
     let public_key_bitstring = extract_public_key_bitstring(spki_fields)?;
     let rsa_sequence = parse_rsa_public_key(&public_key_bitstring)?;
@@ -263,7 +263,7 @@ fn find_certificates(signed_data_seq: &[ASN1Block]) -> Result<Vec<ASN1Block>, St
                 if tag.is_zero().into() =>
             {
                 let parsed_inner =
-                    from_der(data).map_err(|e| format!("Cert wrapper parse error: {:?}", e))?;
+                    from_der(data).map_err(|e| format!("Cert wrapper parse error: {e:?}"))?;
                 match parsed_inner.as_slice() {
                     [ASN1Block::Set(_, items)] => Ok(items.clone()),
                     [ASN1Block::Sequence(_, items)] => Ok(items.clone()),
@@ -387,7 +387,7 @@ fn extract_public_key_bitstring(spki_fields: &[ASN1Block]) -> Result<Vec<u8>, St
 
 fn parse_rsa_public_key(bitstring: &[u8]) -> Result<Vec<ASN1Block>, String> {
     let rsa_blocks =
-        from_der(bitstring).map_err(|e| format!("RSAPublicKey parse error: {:?}", e))?;
+        from_der(bitstring).map_err(|e| format!("RSAPublicKey parse error: {e:?}"))?;
     if let ASN1Block::Sequence(_, items) = &rsa_blocks[0] {
         Ok(items.clone())
     } else {
