@@ -3,6 +3,8 @@ set -e
 
 # Build the program
 echo "Building RISC-V program..."
+# Ensure we're using the correct linker scripts
+export RUSTFLAGS="-C target-feature=+m,-unaligned-scalar-mem,+relax -C link-arg=-Tlds/memory.x -C link-arg=-Tlds/link.x -C link-arg=--save-temps -C force-frame-pointers"
 cargo build --release --target riscv32im-unknown-none-elf
 
 # Find LLVM tools in rustup toolchain
