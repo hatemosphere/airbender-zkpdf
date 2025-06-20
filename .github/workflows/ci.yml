@@ -43,7 +43,7 @@ jobs:
       with:
         toolchain: nightly
         target: riscv32im-unknown-none-elf
-        components: rust-src
+        components: rust-src, llvm-tools-preview
 
     - name: Build zkPDF program
       run: |

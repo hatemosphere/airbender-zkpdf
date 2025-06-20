@@ -7,17 +7,33 @@ echo "Building RISC-V program..."
 export RUSTFLAGS="-C target-feature=+m,-unaligned-scalar-mem,+relax -C link-arg=-Tlds/memory.x -C link-arg=-Tlds/link.x -C link-arg=--save-temps -C force-frame-pointers"
 cargo build --release --target riscv32im-unknown-none-elf
 
-# Find LLVM tools in rustup toolchain
-OBJCOPY=$(find ~/.rustup -name "llvm-objcopy" | head -1)
-OBJDUMP=$(find ~/.rustup -name "llvm-objdump" | head -1)
+# Find LLVM tools - try rustup first, then system
+OBJCOPY=$(find ~/.rustup -name "llvm-objcopy" 2>/dev/null | head -1)
+OBJDUMP=$(find ~/.rustup -name "llvm-objdump" 2>/dev/null | head -1)
 
+# If not found in rustup, try system paths
 if [ -z "$OBJCOPY" ]; then
-    echo "Error: llvm-objcopy not found in rustup toolchain"
-    exit 1
+    OBJCOPY=$(which llvm-objcopy 2>/dev/null || which rust-objcopy 2>/dev/null)
 fi
 
 if [ -z "$OBJDUMP" ]; then
-    echo "Warning: llvm-objdump not found in rustup toolchain, skipping ELF info"
+    OBJDUMP=$(which llvm-objdump 2>/dev/null || which rust-objdump 2>/dev/null)
+fi
+
+if [ -z "$OBJCOPY" ]; then
+    echo "Error: llvm-objcopy not found in rustup toolchain or system PATH"
+    echo "Trying to install rust-src component..."
+    rustup component add rust-src
+    # Try again after installing rust-src
+    OBJCOPY=$(find ~/.rustup -name "llvm-objcopy" 2>/dev/null | head -1)
+    if [ -z "$OBJCOPY" ]; then
+        echo "Error: Still can't find llvm-objcopy"
+        exit 1
+    fi
+fi
+
+if [ -z "$OBJDUMP" ]; then
+    echo "Warning: llvm-objdump not found, skipping ELF info"
     OBJDUMP=""
 fi
 
