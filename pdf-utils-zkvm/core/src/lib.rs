@@ -20,7 +20,7 @@ pub fn validate_and_extract_pdf(pdf_bytes: &[u8]) -> Result<PdfValidationResult,
 
     // Extract text
     let text_pages = extract_text(pdf_bytes.to_vec())
-        .map_err(|e| alloc::format!("Text extraction failed: {}", e))?;
+        .map_err(|e| alloc::format!("Text extraction failed: {e}"))?;
 
     Ok(PdfValidationResult {
         signature_valid,
