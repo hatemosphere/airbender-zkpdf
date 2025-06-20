@@ -17,7 +17,7 @@ pub trait Logger {
 
     /// Log a formatted debug message
     fn log_debug_fmt(&self, args: fmt::Arguments<'_>) {
-        let message = format!("{}", args);
+        let message = format!("{args}");
         self.log_debug(&message);
     }
 }
