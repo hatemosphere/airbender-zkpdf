@@ -61,10 +61,19 @@ jobs:
       id: run_test
       run: |
         cd pdf-zkvm-program
-        # Run and capture output
-        OUTPUT=$(../airbender/target/release/cli run --bin app.bin --input-file input.txt --cycles 999999999 2>&1 | tail -1)
+        # Run and capture full output
+        FULL_OUTPUT=$(../airbender/target/release/cli run --bin app.bin --input-file input.txt --cycles 999999999 2>&1)
+
+        # Extract cycle count (looking for "Executed N cycles" pattern)
+        CYCLES=$(echo "$FULL_OUTPUT" | grep -E "Executed [0-9]+ cycles" | grep -oE "[0-9]+" || echo "unknown")
+
+        # Get the last line (program output)
+        OUTPUT=$(echo "$FULL_OUTPUT" | tail -1)
+
         echo "Program output: $OUTPUT"
+        echo "Cycles executed: $CYCLES"
         echo "output=$OUTPUT" >> $GITHUB_OUTPUT
+        echo "cycles=$CYCLES" >> $GITHUB_OUTPUT
         cd ..
 
     - name: Verify output
@@ -80,7 +89,9 @@ jobs:
         # - result[6] = 26 (expected text size)
 
         OUTPUT="${{ steps.run_test.outputs.output }}"
+        CYCLES="${{ steps.run_test.outputs.cycles }}"
         echo "Checking output: $OUTPUT"
+        echo "Execution took $CYCLES cycles"
 
         # Extract the values
         if [[ "$OUTPUT" =~ Result:\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+),\ ([0-9]+) ]]; then
