@@ -386,8 +386,7 @@ fn extract_public_key_bitstring(spki_fields: &[ASN1Block]) -> Result<Vec<u8>, St
 }
 
 fn parse_rsa_public_key(bitstring: &[u8]) -> Result<Vec<ASN1Block>, String> {
-    let rsa_blocks =
-        from_der(bitstring).map_err(|e| format!("RSAPublicKey parse error: {e:?}"))?;
+    let rsa_blocks = from_der(bitstring).map_err(|e| format!("RSAPublicKey parse error: {e:?}"))?;
     if let ASN1Block::Sequence(_, items) = &rsa_blocks[0] {
         Ok(items.clone())
     } else {
