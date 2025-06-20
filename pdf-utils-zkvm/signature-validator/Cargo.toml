@@ -13,7 +13,7 @@ rsa = { workspace = true }
 crypto-bigint = { workspace = true }
 signature = { workspace = true }
 pdf-logger = { path = "../logger" }
-simple-asn1-nostd = { path = "../simple-asn1-nostd" }
+simple-asn1-nostd = { workspace = true }
 
 [features]
 debug = []

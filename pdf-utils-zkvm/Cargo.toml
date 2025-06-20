@@ -1,7 +1,5 @@
 [workspace]
 members = [
-    "logger",
-    "simple-asn1-nostd",
     "signature-validator",
     "extractor",
     "core",
@@ -21,8 +19,9 @@ num-bigint = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 rand_core = { version = "0.6", default-features = false }
-crypto-bigint = { path = "../pdf-zkvm-program/crypto-bigint-no-atomics", default-features = false, features = ["alloc"] }
+crypto-bigint = { git = "https://github.com/hatemosphere/crypto-bigint-no-atomics", default-features = false, features = ["alloc"] }
 signature = { version = "2.3.0-pre.4", default-features = false }
+simple-asn1-nostd = { git = "https://github.com/hatemosphere/simple_asn1_risc_v", branch = "develop", default-features = false }
 
 [patch.crates-io]
-crypto-bigint = { path = "../pdf-zkvm-program/crypto-bigint-no-atomics" }
+crypto-bigint = { git = "https://github.com/hatemosphere/crypto-bigint-no-atomics" }

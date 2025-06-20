@@ -20,6 +20,6 @@ panic = "abort"
 opt-level = "z"
 
 [patch.crates-io]
-crypto-bigint = { path = "crypto-bigint-no-atomics" }
+crypto-bigint = { git = "https://github.com/hatemosphere/crypto-bigint-no-atomics" }
 
 [workspace]
