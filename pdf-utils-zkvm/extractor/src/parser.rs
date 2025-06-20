@@ -246,8 +246,7 @@ impl<'a> Parser<'a> {
 
         if self.peek() != Some(b'<') || self.data.get(self.pos + 1) != Some(&b'<') {
             return Err(alloc::format!(
-                "Expected dictionary to start with <<, found: {:?}",
-                preview
+                "Expected dictionary to start with <<, found: {preview:?}"
             ));
         }
         self.advance();
@@ -648,8 +647,7 @@ pub fn parse_pdf(data: &[u8]) -> Result<PdfParseResult, PdfError> {
         Some(PdfObj::Reference(r)) => r,
         _ => {
             return Err(PdfError::ParseError(alloc::format!(
-                "No Root in trailer. Trailer: {:?}",
-                trailer_dict
+                "No Root in trailer. Trailer: {trailer_dict:?}"
             )))
         }
     };
@@ -761,8 +759,7 @@ fn collect_pages(
 
     let page_obj = resolve_reference(objects, page_ref).ok_or_else(|| {
         PdfError::ParseError(alloc::format!(
-            "Could not resolve page reference {:?}",
-            page_ref
+            "Could not resolve page reference {page_ref:?}"
         ))
     })?;
 

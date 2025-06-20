@@ -27,8 +27,8 @@ pub enum PdfError {
 impl fmt::Display for PdfError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PdfError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            PdfError::DecompressionError(msg) => write!(f, "Decompression error: {}", msg),
+            PdfError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            PdfError::DecompressionError(msg) => write!(f, "Decompression error: {msg}"),
         }
     }
 }

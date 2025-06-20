@@ -64,7 +64,7 @@ fn apply_filter(filter_name: &str, data: &[u8]) -> Result<Vec<u8>, String> {
         }
         "ASCIIHexDecode" => decode_ascii_hex(data),
         "ASCII85Decode" => decode_ascii85(data),
-        _ => Err(alloc::format!("Unsupported filter: {}", filter_name)),
+        _ => Err(alloc::format!("Unsupported filter: {filter_name}")),
     }
 }
 
@@ -185,7 +185,7 @@ fn apply_decode_parms(data: &[u8], decode_parms: &PdfObj) -> Result<Vec<u8>, Str
                         };
                         apply_png_predictor(data, predictor, columns)
                     } else {
-                        Err(alloc::format!("Unsupported predictor: {}", predictor))
+                        Err(alloc::format!("Unsupported predictor: {predictor}"))
                     }
                 } else {
                     Ok(data.to_vec())
@@ -276,7 +276,7 @@ fn apply_png_predictor(data: &[u8], _predictor: i32, columns: usize) -> Result<V
                             decoded_row[i] = row[i].wrapping_add(prev_row[i]);
                         }
                     }
-                    _ => return Err(alloc::format!("Unsupported predictor algorithm: {}", algo)),
+                    _ => return Err(alloc::format!("Unsupported predictor algorithm: {algo}")),
                 }
             }
         }
