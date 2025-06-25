@@ -64,8 +64,8 @@ jobs:
         # Run and capture full output
         FULL_OUTPUT=$(../airbender/target/release/cli run --bin app.bin --input-file input.txt --cycles 999999999 2>&1)
 
-        # Extract cycle count (looking for "Executed N cycles" pattern)
-        CYCLES=$(echo "$FULL_OUTPUT" | grep -E "Executed [0-9]+ cycles" | grep -oE "[0-9]+" || echo "unknown")
+        # Extract cycle count (looking for "Took N cycles to finish" pattern)
+        CYCLES=$(echo "$FULL_OUTPUT" | grep -E "Took [0-9]+ cycles to finish" | grep -oE "[0-9]+" || echo "unknown")
 
         # Get the last line (program output)
         OUTPUT=$(echo "$FULL_OUTPUT" | tail -1)
